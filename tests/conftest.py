@@ -2,6 +2,10 @@
 
 import pytest
 
+from fastapi.testclient import TestClient
+
+from satoshi_tool.web.app import create_app
+
 
 @pytest.fixture
 def test_mnemonic_12():
@@ -19,3 +23,8 @@ def expected_test_addrs():
         84: "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu",
         86: "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr",
     }
+
+
+@pytest.fixture
+def client():
+    return TestClient(create_app())
