@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+
+# Brainstorming workspace
+.superpowers/
+
+# IDE
+.vscode/
+.idea/
+
+# Hits files (sensibles — no van a GitHub)
+Passphrases_Cazadas.txt
+Semillas_Cazadas.txt
