@@ -1,0 +1,88 @@
+<div x-data="passphraseView()">
+  <h1>// PASSPHRASE_HUNTER</h1>
+  <p class="subtitle">Prueba una lista de passphrases sobre una seed conocida.</p>
+
+  <div class="panel">
+    <span class="label">Seed (mnemónica / xprv / WIF)</span>
+    <textarea x-model="seed"></textarea>
+  </div>
+
+  <div class="panel">
+    <span class="label">Dirección objetivo (opcional)</span>
+    <input type="text" x-model="target" placeholder="bc1... / 3... / 1... (vacío = busca actividad on-chain)">
+  </div>
+
+  <div class="panel">
+    <span class="label">Purpose</span>
+    <select x-model="purpose" style="width:auto">
+      <option value="44">BIP44</option>
+      <option value="49">BIP49</option>
+      <option value="84">BIP84</option>
+      <option value="86">BIP86</option>
+    </select>
+  </div>
+
+  <div class="panel">
+    <span class="label">Passphrases (una por línea)</span>
+    <textarea x-model="passphrases" placeholder="passphrase-1&#10;passphrase-2&#10;..." style="min-height:120px"></textarea>
+    <p class="mono muted" style="font-size:10px; margin:6px 0 0">
+      <span x-text="`${passphraseList.length} passphrases a probar`"></span>
+    </p>
+  </div>
+
+  <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+    <button @click="start()" :disabled="dash.running || passphraseList.length === 0 || !seed.trim()">
+      <span x-show="!dash.running">Probar</span>
+      <span x-show="dash.running">Probando…</span>
+    </button>
+    <button class="danger" x-show="dash.running" @click="dash.stop()">Stop</button>
+  </div>
+
+  <template x-if="dash.running || dash.hit || dash.kpi.tested">
+    <div>
+      <div class="kpi-grid">
+        <div class="kpi neutral"><div class="kpi-lbl">Tested</div><div class="kpi-val" x-text="dash.kpi.tested || 0"></div></div>
+        <div class="kpi ok"><div class="kpi-lbl">Hits</div><div class="kpi-val" x-text="dash.kpi.hits || 0"></div></div>
+        <div class="kpi err"><div class="kpi-lbl">Errors</div><div class="kpi-val" x-text="dash.kpi.errors || 0"></div></div>
+      </div>
+
+      <template x-if="dash.hit">
+        <div class="hit-banner">
+          <h3>★ HIT ENCONTRADO</h3>
+          <div class="mono"><strong>passphrase:</strong> <span x-text="dash.hit.passphrase"></span></div>
+          <div class="mono"><strong>address:</strong> <span x-text="dash.hit.address"></span></div>
+          <div class="mono"><strong>path:</strong> <span x-text="dash.hit.path"></span></div>
+        </div>
+      </template>
+    </div>
+  </template>
+</div>
+
+<script>
+function passphraseView() {
+  return {
+    seed: "",
+    target: "",
+    purpose: "84",
+    passphrases: "",
+    dash: jobDashboard(),
+    get passphraseList() {
+      return this.passphrases.split("\n").map(s => s.trim()).filter(Boolean);
+    },
+    async start() {
+      this.dash.reset();
+      try {
+        const { job_id } = await api.post("/api/passphrase/start", {
+          seed: this.seed.trim(),
+          target: this.target.trim(),
+          purpose: parseInt(this.purpose),
+          passphrases: this.passphraseList,
+        });
+        this.dash.startJob(job_id);
+      } catch (e) {
+        this.dash.error = e.message;
+      }
+    },
+  };
+}
+</script>
