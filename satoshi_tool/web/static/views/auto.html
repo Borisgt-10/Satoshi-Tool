@@ -1,0 +1,60 @@
+<div x-data="autoView()">
+  <h1>// AUTO_MODE</h1>
+  <p class="subtitle">
+    Genera mnemónicas aleatorias y comprueba si tienen actividad on-chain.
+    Educativo — la probabilidad de hit es astronómicamente baja.
+  </p>
+
+  <div class="panel">
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button @click="start()" :disabled="dash.running">
+        <span x-show="!dash.running">Scan</span>
+        <span x-show="dash.running">Escaneando…</span>
+      </button>
+      <button class="danger" x-show="dash.running" @click="dash.stop()">Stop</button>
+    </div>
+  </div>
+
+  <template x-if="dash.running || dash.events.length || dash.hit || dash.kpi.seeds">
+    <div>
+      <div class="kpi-grid">
+        <div class="kpi neutral"><div class="kpi-lbl">Seeds</div><div class="kpi-val" x-text="dash.kpi.seeds || 0"></div></div>
+        <div class="kpi neutral"><div class="kpi-lbl">Addrs</div><div class="kpi-val" x-text="dash.kpi.addresses_checked || 0"></div></div>
+        <div class="kpi ok"><div class="kpi-lbl">Hits</div><div class="kpi-val" x-text="dash.kpi.hits || 0"></div></div>
+      </div>
+
+      <template x-if="dash.hit">
+        <div class="hit-banner">
+          <h3>★ HIT ENCONTRADO</h3>
+          <div class="mono"><strong>mnemonic:</strong> <span style="word-break:break-all" x-text="dash.hit.mnemonic"></span></div>
+          <div class="mono"><strong>address:</strong> <span x-text="dash.hit.address"></span></div>
+          <div class="mono"><strong>path:</strong> <span x-text="dash.hit.path"></span></div>
+          <div class="mono"><strong>saldo:</strong> <span x-text="fmtBTC((dash.hit.act && dash.hit.act.total) || 0)"></span></div>
+        </div>
+      </template>
+    </div>
+  </template>
+
+  <template x-if="dash.error">
+    <div class="panel" style="border-color: var(--err)">
+      <span class="err-text mono" x-text="dash.error"></span>
+    </div>
+  </template>
+</div>
+
+<script>
+function autoView() {
+  return {
+    dash: jobDashboard(),
+    async start() {
+      this.dash.reset();
+      try {
+        const { job_id } = await api.post("/api/auto/start", {});
+        this.dash.startJob(job_id);
+      } catch (e) {
+        this.dash.error = e.message;
+      }
+    },
+  };
+}
+</script>
