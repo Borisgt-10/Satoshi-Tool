@@ -14,6 +14,7 @@ from satoshi_tool.derivation import (
     derive_first_for_all_purposes,
     scan_purpose_with_gap_limit,
 )
+from satoshi_tool.persistence import _persist_seed_hit
 from satoshi_tool.web.jobs import JobEvent, job_manager
 from satoshi_tool.web.models import (
     DerivationResult,
@@ -106,6 +107,21 @@ def manual_full(req: ManualFullRequest):
             if kind == "used":
                 hits += 1
                 act = kw.get("act", {})
+                try:
+                    _persist_seed_hit(
+                        address=addr,
+                        activity={
+                            "total": act.get("total", 0),
+                            "ever_received": act.get("ever_received", False),
+                            "ever_spent": act.get("ever_spent", False),
+                            "utxo_count": 0,
+                        },
+                        mnemonic=seed_value if seed_mode == "mnemonic" else "",
+                        passphrase=passphrase,
+                        path=f"m/{purpose}'/0'/0'/{change}/{idx}",
+                    )
+                except Exception:
+                    pass
                 emit(JobEvent(type="addr", payload={
                     "purpose": purpose, "change": change, "index": idx,
                     "address": addr, "status": "used",

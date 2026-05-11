@@ -10,6 +10,7 @@ from satoshi_tool.derivation import (
     derivar_primera_direccion_por_purpose,
     infer_purpose_from_address,
 )
+from satoshi_tool.persistence import _persist_passphrase_hit
 from satoshi_tool.web.jobs import JobEvent, job_manager
 from satoshi_tool.web.models import JobStartResponse, PassphraseStartRequest
 
@@ -65,6 +66,22 @@ def passphrase_start(req: PassphraseStartRequest):
                         act = _activity_single_with_retry(addr, tries=2, base_timeout=10)
                     except Exception:
                         act = {"total": 0, "ever_received": False, "ever_spent": False, "utxo_count": 0}
+                    try:
+                        _persist_passphrase_hit(
+                            address=addr,
+                            activity={
+                                "total": act.get("total", 0),
+                                "ever_received": act.get("ever_received", False),
+                                "ever_spent": act.get("ever_spent", False),
+                                "utxo_count": act.get("utxo_count", 0),
+                            },
+                            seed_mode=seed_mode,
+                            seed_value=seed_value,
+                            passphrase=pp,
+                            path=derived["path"],
+                        )
+                    except Exception:
+                        pass
                     emit(JobEvent(type="hit", payload={
                         "mnemonic": seed_value if seed_mode == "mnemonic" else None,
                         "passphrase": pp, "path": derived["path"],
@@ -79,6 +96,22 @@ def passphrase_start(req: PassphraseStartRequest):
                     errors += 1
                     continue
                 if act.get("total", 0) > 0 or act.get("ever_received"):
+                    try:
+                        _persist_passphrase_hit(
+                            address=addr,
+                            activity={
+                                "total": act.get("total", 0),
+                                "ever_received": act.get("ever_received", False),
+                                "ever_spent": act.get("ever_spent", False),
+                                "utxo_count": act.get("utxo_count", 0),
+                            },
+                            seed_mode=seed_mode,
+                            seed_value=seed_value,
+                            passphrase=pp,
+                            path=derived["path"],
+                        )
+                    except Exception:
+                        pass
                     emit(JobEvent(type="hit", payload={
                         "mnemonic": seed_value if seed_mode == "mnemonic" else None,
                         "passphrase": pp, "path": derived["path"],

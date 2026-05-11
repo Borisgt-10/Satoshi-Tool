@@ -15,6 +15,7 @@ from satoshi_tool.derivation import (
     infer_purpose_from_address,
 )
 from satoshi_tool.mask import _iter_mnemonics_from_mask
+from satoshi_tool.persistence import _persist_seed_hit
 from satoshi_tool.web.jobs import JobEvent, job_manager
 from satoshi_tool.web.models import HunterStartRequest, JobStartResponse
 
@@ -66,6 +67,21 @@ def hunter_start(req: HunterStartRequest):
                         "address": addr, "status": "used",
                         "total_sats": act.get("total", 0),
                     }))
+                    try:
+                        _persist_seed_hit(
+                            address=addr,
+                            activity={
+                                "total": act.get("total", 0),
+                                "ever_received": act.get("ever_received", False),
+                                "ever_spent": act.get("ever_spent", False),
+                                "utxo_count": act.get("utxo_count", 0),
+                            },
+                            mnemonic=mn,
+                            passphrase=req.passphrase,
+                            path=path,
+                        )
+                    except Exception:
+                        pass
                     emit(JobEvent(type="hit", payload={
                         "mnemonic": mn, "path": path, "address": addr, "act": act,
                     }))
@@ -99,6 +115,16 @@ def hunter_start(req: HunterStartRequest):
 
                 if target:
                     if addr == target:
+                        try:
+                            _persist_seed_hit(
+                                address=addr,
+                                activity={"total": 0, "ever_received": True, "ever_spent": False, "utxo_count": 0},
+                                mnemonic=mnemonic,
+                                passphrase=req.passphrase,
+                                path=derived["path"],
+                            )
+                        except Exception:
+                            pass
                         emit(JobEvent(type="hit", payload={
                             "mnemonic": mnemonic, "path": derived["path"], "address": addr,
                             "match": "target",

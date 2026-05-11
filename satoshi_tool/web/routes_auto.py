@@ -9,6 +9,7 @@ from satoshi_tool.derivation import (
     crear_semilla,
     derivar_direcciones_batch_mnemonic,
 )
+from satoshi_tool.persistence import _persist_seed_hit
 from satoshi_tool.web.jobs import JobEvent, job_manager
 from satoshi_tool.web.models import AutoStartRequest, JobStartResponse
 
@@ -48,6 +49,22 @@ def auto_start(_: AutoStartRequest):
                 addresses_checked += 1
                 if a.get("total", 0) > 0 or a.get("ever_received"):
                     hits += 1
+                    try:
+                        _persist_seed_hit(
+                            address=it["address"],
+                            activity={
+                                "total": a.get("total", 0),
+                                "ever_received": a.get("ever_received", False),
+                                "ever_spent": a.get("ever_spent", False),
+                                "utxo_count": len(a.get("utxos", [])),
+                            },
+                            mnemonic=mnemonic,
+                            passphrase="",
+                            path=it["path"],
+                            root_xprv=batch.get("root_xprv"),
+                        )
+                    except Exception:
+                        pass
                     emit(JobEvent(type="hit", payload={
                         "mnemonic": mnemonic, "path": it["path"],
                         "address": it["address"], "act": a,

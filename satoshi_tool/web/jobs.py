@@ -83,14 +83,17 @@ class JobManager:
             job = self._jobs.get(job_id)
         if not job:
             return
-        while True:
-            try:
-                ev = job.queue.get(timeout=timeout)
-            except queue.Empty:
-                return
-            if ev is None:
-                return
-            yield ev
+        try:
+            while True:
+                try:
+                    ev = job.queue.get(timeout=timeout)
+                except queue.Empty:
+                    return
+                if ev is None:
+                    return
+                yield ev
+        finally:
+            self.cleanup_finished()
 
     def cleanup_finished(self) -> None:
         """Elimina jobs cuyo finished_at es anterior a TTL."""
