@@ -57,32 +57,3 @@
     </div>
   </template>
 </div>
-
-<script>
-function passphraseView() {
-  return {
-    seed: "",
-    target: "",
-    purpose: "84",
-    passphrases: "",
-    dash: jobDashboard(),
-    get passphraseList() {
-      return this.passphrases.split("\n").map(s => s.trim()).filter(Boolean);
-    },
-    async start() {
-      this.dash.reset();
-      try {
-        const { job_id } = await api.post("/api/passphrase/start", {
-          seed: this.seed.trim(),
-          target: this.target.trim(),
-          purpose: parseInt(this.purpose),
-          passphrases: this.passphraseList,
-        });
-        this.dash.startJob(job_id);
-      } catch (e) {
-        this.dash.error = e.message;
-      }
-    },
-  };
-}
-</script>

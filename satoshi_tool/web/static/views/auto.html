@@ -41,20 +41,3 @@
     </div>
   </template>
 </div>
-
-<script>
-function autoView() {
-  return {
-    dash: jobDashboard(),
-    async start() {
-      this.dash.reset();
-      try {
-        const { job_id } = await api.post("/api/auto/start", {});
-        this.dash.startJob(job_id);
-      } catch (e) {
-        this.dash.error = e.message;
-      }
-    },
-  };
-}
-</script>

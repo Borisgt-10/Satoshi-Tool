@@ -80,36 +80,3 @@
     </div>
   </template>
 </div>
-
-<script>
-function historyView() {
-  return {
-    hits: [],
-    mode: "",
-    withBalance: false,
-    loading: false,
-    error: "",
-    async load() {
-      this.loading = true;
-      this.error = "";
-      try {
-        const params = new URLSearchParams();
-        if (this.mode) params.set("mode", this.mode);
-        if (this.withBalance) params.set("with_balance", "true");
-        const r = await api.get(`/api/history?${params}`);
-        this.hits = (r.hits || []).map(h => ({ ...h, _reveal: false }))
-                                  .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      } catch (e) {
-        this.error = e.message;
-      } finally {
-        this.loading = false;
-      }
-    },
-    fmtDate(ts) {
-      if (!ts) return "(sin fecha)";
-      const d = new Date(ts * 1000);
-      return d.toISOString().replace("T", " ").substring(0, 19);
-    },
-  };
-}
-</script>

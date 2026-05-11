@@ -46,33 +46,3 @@
     </div>
   </template>
 </div>
-
-<script>
-function generatorView() {
-  return {
-    words: 12,
-    result: null,
-    loading: false,
-    error: "",
-    copied: false,
-    async generate() {
-      this.loading = true;
-      this.error = "";
-      this.result = null;
-      try {
-        this.result = await api.post("/api/generator", { words: parseInt(this.words) });
-      } catch (e) {
-        this.error = e.message;
-      } finally {
-        this.loading = false;
-      }
-    },
-    copy(text) {
-      navigator.clipboard.writeText(text).then(() => {
-        this.copied = true;
-        setTimeout(() => { this.copied = false; }, 1500);
-      });
-    },
-  };
-}
-</script>

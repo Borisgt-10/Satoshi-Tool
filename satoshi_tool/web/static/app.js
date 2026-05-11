@@ -180,3 +180,234 @@ function jobDashboard() {
   };
 }
 window.jobDashboard = jobDashboard;
+
+
+// ============================================================
+// Funciones Alpine por vista — definidas aquí (no en fragments)
+// para que WKWebView / innerHTML las encuentre al inicializar.
+// ============================================================
+
+function generatorView() {
+  return {
+    words: 12,
+    result: null,
+    loading: false,
+    error: "",
+    copied: false,
+    async generate() {
+      this.loading = true;
+      this.error = "";
+      this.result = null;
+      try {
+        this.result = await api.post("/api/generator", { words: parseInt(this.words) });
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+    copy(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.copied = true;
+        setTimeout(() => { this.copied = false; }, 1500);
+      });
+    },
+  };
+}
+window.generatorView = generatorView;
+
+function manualView() {
+  return {
+    seed: "",
+    passphrase: "",
+    mode: "quick",
+    words: [],
+    checksumOk: false,
+    checksumLabel: "",
+    loading: false,
+    quickResults: null,
+    error: "",
+    dash: jobDashboard(),
+
+    get isMnemonic() {
+      const s = this.seed.trim();
+      if (s.startsWith("xprv")) return false;
+      if ((s.length === 51 || s.length === 52) && "5KL".includes(s[0])) return false;
+      return true;
+    },
+
+    updateValidation() {
+      if (!this.isMnemonic) {
+        this.words = [];
+        this.checksumLabel = "";
+        return;
+      }
+      const parsed = validateMnemonicWords(this.seed);
+      this.words = parsed.map((p, i) => ({ ...p, idx: i }));
+      const allValid = parsed.length > 0 && parsed.every(p => p.state === "valid");
+      const len = parsed.length;
+      if (allValid && (len === 12 || len === 24)) {
+        this.checksumLabel = `${len} palabras válidas — checksum se valida al derivar`;
+        this.checksumOk = true;
+      } else if (len > 0) {
+        this.checksumLabel = `${len} palabras (necesita 12 o 24, todas en el wordlist BIP-39)`;
+        this.checksumOk = false;
+      } else {
+        this.checksumLabel = "";
+        this.checksumOk = false;
+      }
+    },
+
+    async run() {
+      this.error = "";
+      this.quickResults = null;
+      this.dash.reset();
+      if (!this.seed.trim()) {
+        this.error = "Introduce una seed.";
+        return;
+      }
+      if (this.mode === "quick") {
+        this.loading = true;
+        try {
+          this.quickResults = await api.post("/api/manual/quick", {
+            seed: this.seed.trim(),
+            passphrase: this.isMnemonic ? this.passphrase : "",
+          });
+        } catch (e) {
+          this.error = e.message;
+        } finally {
+          this.loading = false;
+        }
+      } else {
+        try {
+          const { job_id } = await api.post("/api/manual/full", {
+            seed: this.seed.trim(),
+            passphrase: this.isMnemonic ? this.passphrase : "",
+            gap_limit: 20,
+          });
+          this.dash.startJob(job_id);
+        } catch (e) {
+          this.error = e.message;
+        }
+      }
+    },
+  };
+}
+window.manualView = manualView;
+
+function historyView() {
+  return {
+    hits: [],
+    mode: "",
+    withBalance: false,
+    loading: false,
+    error: "",
+    async load() {
+      this.loading = true;
+      this.error = "";
+      try {
+        const params = new URLSearchParams();
+        if (this.mode) params.set("mode", this.mode);
+        if (this.withBalance) params.set("with_balance", "true");
+        const r = await api.get(`/api/history?${params}`);
+        this.hits = (r.hits || []).map(h => ({ ...h, _reveal: false }))
+                                  .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+    fmtDate(ts) {
+      if (!ts) return "(sin fecha)";
+      const d = new Date(ts * 1000);
+      return d.toISOString().replace("T", " ").substring(0, 19);
+    },
+  };
+}
+window.historyView = historyView;
+
+function autoView() {
+  return {
+    dash: jobDashboard(),
+    async start() {
+      this.dash.reset();
+      try {
+        const { job_id } = await api.post("/api/auto/start", {});
+        this.dash.startJob(job_id);
+      } catch (e) {
+        this.dash.error = e.message;
+      }
+    },
+  };
+}
+window.autoView = autoView;
+
+function hunterView() {
+  return {
+    mask: "",
+    target: "",
+    passphrase: "",
+    purpose: "84",
+    combos: null,
+    dash: jobDashboard(),
+    estimate() {
+      const tokens = this.mask.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      if (![12, 24].includes(tokens.length)) { this.combos = null; return; }
+      if (!WORDLIST) { this.combos = "?"; return; }
+      let total = 1n;
+      for (const tok of tokens) {
+        if (tok === "?") total *= BigInt(WORDLIST.size);
+        else if (tok.endsWith("*") && tok.length > 1) {
+          const pref = tok.slice(0, -1);
+          const matches = [...WORDLIST].filter(w => w.startsWith(pref)).length;
+          total *= BigInt(matches || 0);
+        }
+      }
+      this.combos = total.toLocaleString();
+    },
+    async start() {
+      this.dash.reset();
+      try {
+        const { job_id } = await api.post("/api/hunter/start", {
+          mask: this.mask.trim(),
+          target: this.target.trim(),
+          passphrase: this.passphrase,
+          purpose: parseInt(this.purpose),
+        });
+        this.dash.startJob(job_id);
+      } catch (e) {
+        this.dash.error = e.message;
+      }
+    },
+  };
+}
+window.hunterView = hunterView;
+
+function passphraseView() {
+  return {
+    seed: "",
+    target: "",
+    purpose: "84",
+    passphrases: "",
+    dash: jobDashboard(),
+    get passphraseList() {
+      return this.passphrases.split("\n").map(s => s.trim()).filter(Boolean);
+    },
+    async start() {
+      this.dash.reset();
+      try {
+        const { job_id } = await api.post("/api/passphrase/start", {
+          seed: this.seed.trim(),
+          target: this.target.trim(),
+          purpose: parseInt(this.purpose),
+          passphrases: this.passphraseList,
+        });
+        this.dash.startJob(job_id);
+      } catch (e) {
+        this.dash.error = e.message;
+      }
+    },
+  };
+}
+window.passphraseView = passphraseView;
