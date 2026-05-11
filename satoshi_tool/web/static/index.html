@@ -15,23 +15,23 @@
       <div class="logo">◈ SATOSHI</div>
       <nav class="nav">
         <div class="nav-item" :class="{active: view === 'auto'}" @click="navigate('auto')">
-          <span class="icon">⚡</span> Auto
+          <img class="icon" src="/static/icons/auto.svg" alt=""> Auto
         </div>
         <div class="nav-item" :class="{active: view === 'manual'}" @click="navigate('manual')">
-          <span class="icon">🔍</span> Manual
+          <img class="icon" src="/static/icons/manual.svg" alt=""> Manual
         </div>
         <div class="nav-item" :class="{active: view === 'passphrase'}" @click="navigate('passphrase')">
-          <span class="icon">🔑</span> Passphrase
+          <img class="icon" src="/static/icons/passphrase.svg" alt=""> Passphrase
         </div>
         <div class="nav-item" :class="{active: view === 'hunter'}" @click="navigate('hunter')">
-          <span class="icon">🎯</span> Hunter
+          <img class="icon" src="/static/icons/hunter.svg" alt=""> Hunter
         </div>
         <div class="nav-item" :class="{active: view === 'generator'}" @click="navigate('generator')">
-          <span class="icon">🆕</span> Generador
+          <img class="icon" src="/static/icons/generator.svg" alt=""> Generador
         </div>
         <div class="nav-divider"></div>
         <div class="nav-item" :class="{active: view === 'history'}" @click="navigate('history')">
-          <span class="icon">📜</span> Histórico
+          <img class="icon" src="/static/icons/history.svg" alt=""> Histórico
         </div>
       </nav>
       <div class="footer">
