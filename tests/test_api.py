@@ -55,3 +55,36 @@ def test_manual_quick_with_test_mnemonic(client, monkeypatch, test_mnemonic_12, 
 def test_manual_quick_invalid_mnemonic(client):
     r = client.post("/api/manual/quick", json={"seed": "not a real mnemonic"})
     assert r.status_code == 400
+
+
+def test_history_returns_combined_hits(tmp_path, monkeypatch):
+    """Crea ambos archivos en tmp_path, monkeypatchea las constantes y verifica /api/history."""
+    from satoshi_tool.persistence import _persist_passphrase_hit, _persist_seed_hit
+    seed_file = tmp_path / "seed.txt"
+    pass_file = tmp_path / "pass.txt"
+
+    _persist_seed_hit(
+        address="bc1qne7ma6c78u4q6x2hqgknzqfhtm36z99m42r2sd",
+        activity={"total": 100, "ever_received": True, "ever_spent": False, "utxo_count": 1},
+        mnemonic="m1", passphrase="", path="m/84'/0'/0'/0/0", outfile=str(seed_file),
+    )
+    _persist_passphrase_hit(
+        address="bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu",
+        activity={"total": 0, "ever_received": True, "ever_spent": True, "utxo_count": 0},
+        seed_mode="mnemonic", seed_value="m2", passphrase="x",
+        path="m/84'/0'/0'/0/0", outfile=str(pass_file),
+    )
+
+    monkeypatch.setattr("satoshi_tool.web.routes_history.SEED_HITS_FILEPATH", str(seed_file))
+    monkeypatch.setattr("satoshi_tool.web.routes_history.PASSPHRASE_HITS_FILEPATH", str(pass_file))
+
+    from fastapi.testclient import TestClient
+    from satoshi_tool.web.app import create_app
+    client_local = TestClient(create_app())
+
+    r = client_local.get("/api/history")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["hits"]) == 2
+    modes = {h["mode"] for h in body["hits"]}
+    assert modes == {"seed", "passphrase"}

@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from satoshi_tool.web.routes_generator import router as generator_router
+from satoshi_tool.web.routes_history import router as history_router
 from satoshi_tool.web.routes_manual import router as manual_router
 
 
@@ -21,6 +22,7 @@ def create_app() -> FastAPI:
 
     app.include_router(generator_router)
     app.include_router(manual_router)
+    app.include_router(history_router)
     return app
 
 
