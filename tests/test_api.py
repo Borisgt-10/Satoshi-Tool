@@ -150,3 +150,24 @@ def test_manual_full_creates_job(client, test_mnemonic_12, monkeypatch):
     assert r.status_code == 200
     body = r.json()
     assert "job_id" in body
+
+
+def test_hunter_start_creates_job(client, monkeypatch):
+    """Mockea el iterador de candidatos y el cliente blockstream."""
+
+    def fake_iter(mask):
+        yield "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+
+    def fake_summary(addr, *_args, **_kwargs):
+        return {"total": 0, "ever_received": False, "ever_spent": False,
+                "confirmed": 0, "unconfirmed": 0}
+
+    monkeypatch.setattr("satoshi_tool.web.routes_hunter._iter_mnemonics_from_mask", fake_iter)
+    monkeypatch.setattr("satoshi_tool.web.routes_hunter._summary_single_throttled", fake_summary)
+
+    r = client.post("/api/hunter/start", json={
+        "mask": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon ?",
+        "purpose": 84,
+    })
+    assert r.status_code == 200
+    assert "job_id" in r.json()
