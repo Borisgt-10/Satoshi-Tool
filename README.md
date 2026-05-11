@@ -30,8 +30,8 @@ Pensada para **uso educativo y recuperación personal**. No usar con fondos de t
 Requisitos: macOS (Linux/Windows pendiente), Python 3.9+, conexión a internet para consultar Blockstream.
 
 ```bash
-git clone https://github.com/<tu-usuario>/satoshis-tool.git
-cd satoshis-tool
+git clone https://github.com/Borisgt-10/Satoshi-Tool.git
+cd Satoshi-Tool
 python3 -m pip install -r requirements.txt
 ```
 

@@ -19,3 +19,12 @@ venv/
 # Hits files (sensibles — no van a GitHub)
 Passphrases_Cazadas.txt
 Semillas_Cazadas.txt
+
+# Bundle local de macOS (solo para mi Mac)
+Satoshi.app/
+
+# Wallets de test locales
+Test_wallets.xlsx
+
+# Versiones antiguas
+Older_Versions/
