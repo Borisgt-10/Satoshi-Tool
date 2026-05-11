@@ -12,7 +12,7 @@ echo "BASH_SOURCE: $0"
 
 # Directorio que contiene el .app
 APP_PARENT="$(cd "$(dirname "$0")/../../.." && pwd)"
-FALLBACK="/Users/boris/Desktop/Programación/Bitcoin"
+FALLBACK="/Users/boris/Bitcoin"
 
 echo "APP_PARENT: $APP_PARENT"
 
