@@ -1,0 +1,200 @@
+<div x-data="manualView()">
+  <h1>// MANUAL_MODE</h1>
+  <p class="subtitle">Introduce mnemónica (12/24), xprv o WIF y consulta sus direcciones.</p>
+
+  <div class="panel">
+    <span class="label">Seed</span>
+    <textarea x-model="seed" @input="updateValidation()"
+              placeholder="abandon abandon abandon ... about | xprv... | L...WIF"></textarea>
+
+    <template x-if="words.length > 0">
+      <div>
+        <div class="word-grid">
+          <template x-for="w in words" :key="w.idx">
+            <div class="word" :class="w.state" x-text="w.word"></div>
+          </template>
+        </div>
+        <span class="mono" style="font-size:10px"
+              :class="checksumOk ? 'ok-text' : 'muted'"
+              x-text="checksumLabel"></span>
+      </div>
+    </template>
+  </div>
+
+  <div class="panel" x-show="isMnemonic">
+    <span class="label">Passphrase BIP-39 (opcional)</span>
+    <input type="text" x-model="passphrase" placeholder="(vacío por defecto)">
+  </div>
+
+  <div class="panel">
+    <span class="label">Tipo de escaneo</span>
+    <div style="display:flex; gap:12px; align-items:center;">
+      <label class="mono" style="font-size:11px; cursor:pointer">
+        <input type="radio" x-model="mode" value="quick" style="width:auto; margin-right:4px">
+        Rápido (m/.../0/0)
+      </label>
+      <label class="mono" style="font-size:11px; cursor:pointer">
+        <input type="radio" x-model="mode" value="full" style="width:auto; margin-right:4px">
+        Completo (gap limit 20)
+      </label>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+    <button @click="run()" :disabled="loading || dash.running">
+      <span x-show="!loading && !dash.running">Derivar</span>
+      <span x-show="loading">Consultando...</span>
+      <span x-show="dash.running">Escaneando...</span>
+    </button>
+    <button class="danger" x-show="dash.running" @click="dash.stop()">Stop</button>
+  </div>
+
+  <template x-if="quickResults">
+    <div>
+      <h2>Resultados (quick scan)</h2>
+      <template x-for="d in quickResults.derivations" :key="d.purpose">
+        <div class="panel">
+          <h3 class="panel-title">BIP<span x-text="d.purpose"></span></h3>
+          <template x-if="d.ok">
+            <div>
+              <div class="row">
+                <span class="ad mono" x-text="d.address"></span>
+                <span class="mono" x-text="fmtBTC(d.total_sats)"></span>
+              </div>
+              <div class="row">
+                <span class="muted mono">path: <span x-text="d.path"></span></span>
+                <span><span class="tag" :class="d.ever_received ? 'ok' : 'warn'"
+                       x-text="d.ever_received ? 'usada' : 'vacía'"></span></span>
+              </div>
+            </div>
+          </template>
+          <template x-if="!d.ok">
+            <span class="err-text mono" x-text="d.error"></span>
+          </template>
+        </div>
+      </template>
+    </div>
+  </template>
+
+  <template x-if="dash.running || dash.events.length || dash.hit">
+    <div>
+      <h2>Escaneo completo</h2>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-lbl">Tested</div><div class="kpi-val" x-text="dash.kpi.tested || 0"></div></div>
+        <div class="kpi ok"><div class="kpi-lbl">Hits</div><div class="kpi-val" x-text="dash.kpi.hits || 0"></div></div>
+        <div class="kpi err"><div class="kpi-lbl">Errors</div><div class="kpi-val" x-text="dash.kpi.errors || 0"></div></div>
+      </div>
+
+      <template x-if="dash.hit">
+        <div class="hit-banner">
+          <h3>★ HIT ENCONTRADO</h3>
+          <div class="mono"><strong>address:</strong> <span x-text="dash.hit.address"></span></div>
+          <div class="mono"><strong>path:</strong> <span x-text="dash.hit.path || '(?)'"></span></div>
+          <div class="mono"><strong>saldo:</strong> <span x-text="fmtBTC((dash.hit.act && dash.hit.act.total) || 0)"></span></div>
+        </div>
+      </template>
+
+      <div class="panel">
+        <h3 class="panel-title">Direcciones con actividad o errores</h3>
+        <template x-if="dash.events.length === 0">
+          <p class="muted mono" style="font-size:11px">(esperando eventos…)</p>
+        </template>
+        <template x-for="(e, i) in dash.events" :key="i">
+          <div class="row pulse">
+            <span class="ad mono" x-text="`${e.purpose ? 'BIP'+e.purpose+' ' : ''}${e.change===1?'int':'ext'}/${e.index} ${e.address}`"></span>
+            <span>
+              <span x-show="e.status === 'used'" class="tag ok mono" x-text="fmtBTC(e.total_sats || 0)"></span>
+              <span x-show="e.status === 'error'" class="tag err">error</span>
+            </span>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+
+  <template x-if="error">
+    <div class="panel" style="border-color: var(--err)">
+      <span class="err-text mono" x-text="error"></span>
+    </div>
+  </template>
+</div>
+
+<script>
+function manualView() {
+  return {
+    seed: "",
+    passphrase: "",
+    mode: "quick",
+    words: [],
+    checksumOk: false,
+    checksumLabel: "",
+    loading: false,
+    quickResults: null,
+    error: "",
+    dash: jobDashboard(),
+
+    get isMnemonic() {
+      const s = this.seed.trim();
+      if (s.startsWith("xprv")) return false;
+      if ((s.length === 51 || s.length === 52) && "5KL".includes(s[0])) return false;
+      return true;
+    },
+
+    updateValidation() {
+      if (!this.isMnemonic) {
+        this.words = [];
+        this.checksumLabel = "";
+        return;
+      }
+      const parsed = validateMnemonicWords(this.seed);
+      this.words = parsed.map((p, i) => ({ ...p, idx: i }));
+      const allValid = parsed.length > 0 && parsed.every(p => p.state === "valid");
+      const len = parsed.length;
+      if (allValid && (len === 12 || len === 24)) {
+        this.checksumLabel = `${len} palabras válidas — checksum se valida al derivar`;
+        this.checksumOk = true;
+      } else if (len > 0) {
+        this.checksumLabel = `${len} palabras (necesita 12 o 24, todas en el wordlist BIP-39)`;
+        this.checksumOk = false;
+      } else {
+        this.checksumLabel = "";
+        this.checksumOk = false;
+      }
+    },
+
+    async run() {
+      this.error = "";
+      this.quickResults = null;
+      this.dash.reset();
+      if (!this.seed.trim()) {
+        this.error = "Introduce una seed.";
+        return;
+      }
+      if (this.mode === "quick") {
+        this.loading = true;
+        try {
+          this.quickResults = await api.post("/api/manual/quick", {
+            seed: this.seed.trim(),
+            passphrase: this.isMnemonic ? this.passphrase : "",
+          });
+        } catch (e) {
+          this.error = e.message;
+        } finally {
+          this.loading = false;
+        }
+      } else {
+        try {
+          const { job_id } = await api.post("/api/manual/full", {
+            seed: this.seed.trim(),
+            passphrase: this.isMnemonic ? this.passphrase : "",
+            gap_limit: 20,
+          });
+          this.dash.startJob(job_id);
+        } catch (e) {
+          this.error = e.message;
+        }
+      }
+    },
+  };
+}
+</script>
