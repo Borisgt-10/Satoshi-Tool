@@ -206,3 +206,51 @@ def test_auto_start_creates_job(client, monkeypatch):
 
     from satoshi_tool.web.jobs import job_manager
     job_manager.cancel(body["job_id"])
+
+
+def test_sse_stream_emits_events(client):
+    """Crea un job manualmente con runner sintético, consume el stream."""
+    from satoshi_tool.web.jobs import JobEvent, job_manager
+
+    def runner(emit, is_cancelled):
+        emit(JobEvent(type="kpi", payload={"tested": 1}))
+        emit(JobEvent(type="done", payload={"summary": "ok"}))
+
+    job_id = job_manager.create(runner)
+
+    with client.stream("GET", f"/api/jobs/{job_id}/stream") as r:
+        assert r.status_code == 200
+        events = []
+        for raw in r.iter_lines():
+            if raw.startswith("data:"):
+                import json
+                events.append(json.loads(raw[len("data:"):].strip()))
+            if events and events[-1].get("type") == "done":
+                break
+        types = [e["type"] for e in events]
+        assert "kpi" in types
+        assert types[-1] == "done"
+
+
+def test_cancel_endpoint(client):
+    import time
+    from satoshi_tool.web.jobs import JobEvent, job_manager
+
+    def runner(emit, is_cancelled):
+        for _ in range(100):
+            if is_cancelled():
+                emit(JobEvent(type="cancelled", payload={}))
+                emit(JobEvent(type="done", payload={"reason": "cancelled"}))
+                return
+            time.sleep(0.05)
+
+    job_id = job_manager.create(runner)
+    time.sleep(0.05)
+    r = client.post(f"/api/jobs/{job_id}/cancel")
+    assert r.status_code == 200
+    assert r.json()["cancelled"] is True
+
+
+def test_cancel_unknown_job_returns_404(client):
+    r = client.post("/api/jobs/does-not-exist/cancel")
+    assert r.status_code == 404
