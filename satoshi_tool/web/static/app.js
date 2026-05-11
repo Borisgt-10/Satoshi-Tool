@@ -101,6 +101,12 @@ function satoshiApp() {
       } catch (e) {
         this.fragmentHtml = `<p class="err-text">Error cargando vista: ${e.message}</p>`;
       }
+      // Alpine no escanea x-html — forzamos initTree sobre el contenido inyectado
+      await new Promise(r => requestAnimationFrame(r));
+      const outlet = document.getElementById("outlet");
+      if (outlet && window.Alpine) {
+        window.Alpine.initTree(outlet);
+      }
     },
   };
 }
