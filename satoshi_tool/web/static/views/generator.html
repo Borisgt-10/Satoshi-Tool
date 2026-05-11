@@ -1,0 +1,78 @@
+<div x-data="generatorView()">
+  <h1>// GENERATOR_MODE</h1>
+  <p class="subtitle">Crea una nueva mnemónica BIP-39 (nada se guarda en disco).</p>
+
+  <div class="panel">
+    <span class="label">Longitud</span>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <select x-model="words" style="width:auto">
+        <option value="12">12 palabras</option>
+        <option value="24">24 palabras</option>
+      </select>
+      <button @click="generate()" :disabled="loading">
+        <span x-show="!loading">Generar</span>
+        <span x-show="loading">Generando...</span>
+      </button>
+    </div>
+  </div>
+
+  <template x-if="result">
+    <div>
+      <div class="panel">
+        <h3 class="panel-title">Mnemónica</h3>
+        <div class="word-grid">
+          <template x-for="w in result.words" :key="w + Math.random()">
+            <div class="word valid" x-text="w"></div>
+          </template>
+        </div>
+        <button class="ghost" @click="copy(result.mnemonic)" style="margin-top:6px">
+          Copiar mnemónica
+        </button>
+        <span x-show="copied" class="ok-text mono" style="margin-left:8px; font-size:11px">copiado</span>
+      </div>
+      <div class="panel">
+        <h3 class="panel-title">⚠ Aviso</h3>
+        <p class="subtitle" style="margin-bottom:0">
+          Esta mnemónica NO se guarda en disco. Cópiala antes de cerrar esta vista o se perderá.
+          Si la usas para fondos reales, guárdala en un lugar seguro.
+        </p>
+      </div>
+    </div>
+  </template>
+
+  <template x-if="error">
+    <div class="panel" style="border-color: var(--err)">
+      <span class="err-text mono" x-text="error"></span>
+    </div>
+  </template>
+</div>
+
+<script>
+function generatorView() {
+  return {
+    words: 12,
+    result: null,
+    loading: false,
+    error: "",
+    copied: false,
+    async generate() {
+      this.loading = true;
+      this.error = "";
+      this.result = null;
+      try {
+        this.result = await api.post("/api/generator", { words: parseInt(this.words) });
+      } catch (e) {
+        this.error = e.message;
+      } finally {
+        this.loading = false;
+      }
+    },
+    copy(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.copied = true;
+        setTimeout(() => { this.copied = false; }, 1500);
+      });
+    },
+  };
+}
+</script>
