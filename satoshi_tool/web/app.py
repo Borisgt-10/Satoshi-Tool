@@ -8,6 +8,8 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from satoshi_tool import __version__
+
 from satoshi_tool.web.routes_auto import router as auto_router
 from satoshi_tool.web.routes_generator import router as generator_router
 from satoshi_tool.web.routes_history import router as history_router
@@ -22,13 +24,13 @@ STATIC_DIR = Path(__file__).parent / "static"
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Satoshi's Tool",
-        version="0.4.1",
+        version=__version__,
         description="API local para BIP-39 / HD Bitcoin (mainnet).",
     )
 
     @app.get("/api/health")
-    def health():
-        return {"status": "ok", "version": "0.4.1"}
+    def health() -> dict:
+        return {"status": "ok", "version": __version__}
 
     app.include_router(generator_router)
     app.include_router(manual_router)
@@ -43,7 +45,7 @@ def create_app() -> FastAPI:
 
     # SPA: ruta raíz devuelve index.html
     @app.get("/")
-    def index():
+    def index() -> FileResponse:
         return FileResponse(str(STATIC_DIR / "index.html"))
 
     return app
