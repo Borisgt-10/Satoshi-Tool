@@ -171,3 +171,38 @@ def test_hunter_start_creates_job(client, monkeypatch):
     })
     assert r.status_code == 200
     assert "job_id" in r.json()
+
+
+def test_passphrase_start_creates_job(client, monkeypatch):
+    def fake_act(addr, *_args, **_kwargs):
+        return {"total": 0, "ever_received": False, "ever_spent": False,
+                "confirmed": 0, "unconfirmed": 0, "utxo_count": 0}
+    monkeypatch.setattr("satoshi_tool.web.routes_passphrase._activity_single_with_retry", fake_act)
+
+    r = client.post("/api/passphrase/start", json={
+        "seed": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+        "purpose": 84,
+        "passphrases": ["one", "two", "three"],
+    })
+    assert r.status_code == 200
+    assert "job_id" in r.json()
+
+
+def test_auto_start_creates_job(client, monkeypatch):
+    """Mockeamos _activity_batch para que el runner no toque red, y cancelamos rápido."""
+    def fake_batch(addresses, timeout=15):
+        return [
+            {"address": a, "total": 0, "ever_received": False, "ever_spent": False,
+             "has_unspent": False, "utxos": [], "status": "ok", "error_msg": None,
+             "confirmed": 0, "unconfirmed": 0}
+            for a in addresses
+        ]
+    monkeypatch.setattr("satoshi_tool.web.routes_auto._activity_batch", fake_batch)
+
+    r = client.post("/api/auto/start", json={})
+    assert r.status_code == 200
+    body = r.json()
+    assert "job_id" in body
+
+    from satoshi_tool.web.jobs import job_manager
+    job_manager.cancel(body["job_id"])
