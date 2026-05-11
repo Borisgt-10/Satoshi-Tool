@@ -1,0 +1,24 @@
+#!/bin/bash
+# Launcher de Satoshi's Tool.
+# Si el .app vive dentro del repo (Bitcoin/Satoshi.app/Contents/MacOS/Satoshi),
+# usa el padre del bundle como directorio del proyecto.
+# Si el .app se ha movido a /Applications/ u otro sitio, usa la ruta absoluta
+# del repo original.
+
+set -e
+
+# Directorio que contiene el .app
+APP_PARENT="$(cd "$(dirname "$0")/../../.." && pwd)"
+FALLBACK="/Users/boris/Desktop/Programación/Bitcoin"
+
+if [ -f "$APP_PARENT/Satoshi_Tool.py" ]; then
+    PROJECT_DIR="$APP_PARENT"
+elif [ -f "$FALLBACK/Satoshi_Tool.py" ]; then
+    PROJECT_DIR="$FALLBACK"
+else
+    /usr/bin/osascript -e 'display alert "Satoshi'\''s Tool" message "No encuentro Satoshi_Tool.py. Esperaba el repo en:\n\n/Users/boris/Desktop/Programación/Bitcoin\n\nMueve el .app de vuelta al repo o ajusta el FALLBACK del launcher."'
+    exit 1
+fi
+
+cd "$PROJECT_DIR"
+exec /usr/bin/env python3 Satoshi_Tool.py
