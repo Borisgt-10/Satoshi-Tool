@@ -92,6 +92,8 @@ function satoshiApp() {
     },
     async navigate(view) {
       this.view = view;
+      this.fragmentHtml = "";  // limpia primero para que el fade-in se re-dispare
+      await new Promise(r => requestAnimationFrame(r));
       try {
         const r = await fetch(`/static/views/${view}.html`);
         if (!r.ok) throw new Error(`fragment ${view} no disponible`);
