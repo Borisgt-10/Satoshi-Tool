@@ -88,3 +88,43 @@ def test_history_returns_combined_hits(tmp_path, monkeypatch):
     assert len(body["hits"]) == 2
     modes = {h["mode"] for h in body["hits"]}
     assert modes == {"seed", "passphrase"}
+
+
+def test_jobmanager_create_and_consume():
+    from satoshi_tool.web.jobs import JobEvent, JobManager
+    jm = JobManager(ttl_seconds=5)
+
+    def runner(emit, is_cancelled):
+        emit(JobEvent(type="kpi", payload={"tested": 1}))
+        emit(JobEvent(type="done", payload={"summary": "ok"}))
+
+    job_id = jm.create(runner)
+    events = list(jm.iter_events(job_id, timeout=2.0))
+    types = [e.type for e in events]
+    assert "kpi" in types
+    assert types[-1] == "done"
+
+
+def test_jobmanager_cancel_stops_runner():
+    """El runner debe ver is_cancelled() == True después de cancel."""
+    import time
+    from satoshi_tool.web.jobs import JobEvent, JobManager
+
+    jm = JobManager(ttl_seconds=5)
+
+    def runner(emit, is_cancelled):
+        for i in range(100):
+            if is_cancelled():
+                emit(JobEvent(type="cancelled", payload={}))
+                emit(JobEvent(type="done", payload={"reason": "cancelled"}))
+                return
+            emit(JobEvent(type="kpi", payload={"tested": i}))
+            time.sleep(0.05)
+
+    job_id = jm.create(runner)
+    time.sleep(0.1)
+    jm.cancel(job_id)
+    events = list(jm.iter_events(job_id, timeout=2.0))
+    types = [e.type for e in events]
+    assert "cancelled" in types
+    assert types[-1] == "done"
