@@ -128,3 +128,25 @@ def test_jobmanager_cancel_stops_runner():
     types = [e.type for e in events]
     assert "cancelled" in types
     assert types[-1] == "done"
+
+
+def test_manual_full_creates_job(client, test_mnemonic_12, monkeypatch):
+    """POST /api/manual/full devuelve job_id; el runner emite KPIs y done."""
+
+    def fake_scan(*, seed_mode, seed_value, passphrase, purpose, account, gap_limit, max_index, on_progress):
+        if on_progress:
+            on_progress(purpose, 0, 0, "fake-addr", "empty")
+            on_progress(purpose, 0, 1, "fake-addr-2", "empty")
+        return {
+            "purpose": purpose, "account": account,
+            "external": {"scanned": 2, "used": [], "total_sats": 0, "confirmed": 0, "unconfirmed": 0},
+            "internal": {"scanned": 0, "used": [], "total_sats": 0, "confirmed": 0, "unconfirmed": 0},
+            "total_sats": 0,
+        }
+
+    monkeypatch.setattr("satoshi_tool.web.routes_manual.scan_purpose_with_gap_limit", fake_scan)
+
+    r = client.post("/api/manual/full", json={"seed": test_mnemonic_12, "gap_limit": 5})
+    assert r.status_code == 200
+    body = r.json()
+    assert "job_id" in body
