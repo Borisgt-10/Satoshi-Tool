@@ -3,3 +3,5 @@ bip_utils>=2.8.0
 requests>=2.25.0
 fastapi>=0.110
 uvicorn[standard]>=0.27
+pywebview>=5.0
+pyobjc-framework-WebKit>=10.0; sys_platform == "darwin"
