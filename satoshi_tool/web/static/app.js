@@ -110,3 +110,71 @@ window.fmtBTC = fmtBTC;
 window.fmtHMS = fmtHMS;
 window.validateMnemonicWords = validateMnemonicWords;
 window.satoshiApp = satoshiApp;
+
+// Componente reutilizable de dashboard live para jobs largos
+function jobDashboard() {
+  return {
+    running: false,
+    jobId: null,
+    kpi: {},
+    events: [],     // últimos N eventos relevantes (used/error)
+    hit: null,
+    eventSource: null,
+    error: "",
+
+    startJob(jobId) {
+      this.running = true;
+      this.jobId = jobId;
+      this.kpi = {};
+      this.events = [];
+      this.hit = null;
+      this.error = "";
+
+      this.eventSource = openJobStream(jobId, {
+        kpi: (p) => { this.kpi = p; },
+        addr: (p) => {
+          this.events.unshift(p);
+          if (this.events.length > 50) this.events.pop();
+        },
+        hit: (p) => {
+          this.hit = p;
+        },
+        done: (p) => {
+          this.running = false;
+          if (p && p.totals) this.kpi = { ...this.kpi, ...p.totals };
+        },
+        cancelled: () => {
+          this.running = false;
+        },
+        error: (p) => {
+          this.running = false;
+          this.error = p.message || "error desconocido";
+        },
+        connectionLost: () => {
+          this.running = false;
+          this.error = "conexión perdida con el job";
+        },
+      });
+    },
+
+    async stop() {
+      if (!this.jobId) return;
+      try {
+        await api.post(`/api/jobs/${this.jobId}/cancel`, {});
+      } catch (e) {
+        this.error = e.message;
+      }
+    },
+
+    reset() {
+      if (this.eventSource) this.eventSource.close();
+      this.running = false;
+      this.jobId = null;
+      this.kpi = {};
+      this.events = [];
+      this.hit = null;
+      this.error = "";
+    },
+  };
+}
+window.jobDashboard = jobDashboard;
