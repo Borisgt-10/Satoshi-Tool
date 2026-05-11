@@ -2,9 +2,48 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Satoshi's Tool</title>
+  <link rel="stylesheet" href="/static/theme.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script defer src="/static/app.js"></script>
 </head>
 <body>
-  <p>SPA en construcción.</p>
+  <div class="app" x-data="satoshiApp()" x-init="init()">
+
+    <aside class="sidebar">
+      <div class="logo">◈ SATOSHI</div>
+      <nav class="nav">
+        <div class="nav-item" :class="{active: view === 'auto'}" @click="navigate('auto')">
+          <span class="icon">⚡</span> Auto
+        </div>
+        <div class="nav-item" :class="{active: view === 'manual'}" @click="navigate('manual')">
+          <span class="icon">🔍</span> Manual
+        </div>
+        <div class="nav-item" :class="{active: view === 'passphrase'}" @click="navigate('passphrase')">
+          <span class="icon">🔑</span> Passphrase
+        </div>
+        <div class="nav-item" :class="{active: view === 'hunter'}" @click="navigate('hunter')">
+          <span class="icon">🎯</span> Hunter
+        </div>
+        <div class="nav-item" :class="{active: view === 'generator'}" @click="navigate('generator')">
+          <span class="icon">🆕</span> Generador
+        </div>
+        <div class="nav-divider"></div>
+        <div class="nav-item" :class="{active: view === 'history'}" @click="navigate('history')">
+          <span class="icon">📜</span> Histórico
+        </div>
+      </nav>
+      <div class="footer">
+        backend: <span class="ok-text">Blockstream</span><br>
+        rate: 8 req/s
+      </div>
+    </aside>
+
+    <main>
+      <div id="outlet" x-html="fragmentHtml" class="fade-in" :key="view"></div>
+    </main>
+
+  </div>
 </body>
 </html>
